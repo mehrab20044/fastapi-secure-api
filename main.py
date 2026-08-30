@@ -69,28 +69,64 @@ async def async_fetch():
             "duration_seconds": round(duration, 3),
         }
 
+async def fetch_one(client: httpx.AsyncClient, url: str) -> dict:
+    try:
+        response = await client.get(url)
+        response.raise_for_status()
+
+        return {
+            "url": url,
+            "ok": True,
+            "status_code": response.status_code,
+            "data": response.json(),
+        }
+
+    except httpx.TimeoutException:
+        return {
+            "url": url,
+            "ok": False,
+            "error": "timeout",
+        }
+
+    except httpx.HTTPStatusError as exc:
+        return {
+            "url": url,
+            "ok": False,
+            "status_code": exc.response.status_code,
+            "error": "http_error",
+        }
+
+    except httpx.RequestError as exc:
+        return {
+            "url": url,
+            "ok": False,
+            "error": type(exc).__name__,
+        }
+
+
+
+
 @app.get("/async-concurrent")
 async def async_concurrent():
     start_time = time.perf_counter()
-
     timeout = httpx.Timeout(5.0)
 
     async with httpx.AsyncClient(timeout=timeout) as client:
-        tasks = [client.get(url) for url in URLS]
-        responses = await asyncio.gather(*tasks)
+        tasks = [fetch_one(client, url) for url in URLS]
+        results = await asyncio.gather(*tasks)
 
-        for response in responses :
-            response.raise_for_status()
+    duration = time.perf_counter() - start_time
+    successful_requests = sum(result["ok"] for result in results)
+    failed_requests = len(results) - successful_requests
 
-        resulte = [response.json() for response in responses]
-
-        duration = time.perf_counter() - start_time
-
-        return {
+    return {
         "mode": "async_concurrent",
-        "total_requests": len(resulte),
+        "total_requests": len(results),
+        "successful_requests": successful_requests,
+        "failed_requests": failed_requests,
         "duration_seconds": round(duration, 3),
-    }  
+        "results": results,
+    } 
 
 
 fake_users_db = {
