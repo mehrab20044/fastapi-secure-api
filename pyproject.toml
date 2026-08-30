@@ -1,0 +1,17 @@
+[project]
+name = "fastapi-secure-api"
+version = "0.1.0"
+description = "FastAPI project for async I/O, concurrency, JWT authentication, and RBAC"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

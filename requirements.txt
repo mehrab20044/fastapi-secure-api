@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+httpx
+requests
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+pytest
+ruff

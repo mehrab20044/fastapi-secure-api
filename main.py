@@ -1,13 +1,12 @@
 import asyncio
 import time
 from datetime import timedelta
-from typing import List
 
+import httpx
+import requests
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-import httpx
 from pydantic import BaseModel
-import requests
 
 # وارد کردن ابزارهای امنیتی از auth.py
 from auth import (
@@ -19,7 +18,7 @@ from auth import (
 )
 
 app = FastAPI(
-    title = "P1-W03-D1: Async vs Sync I/O",
+    title = "P1-W03: Async vs Sync I/O",
     description="پروژه یادگیری فاز ۱: تست همزمانی Async/Sync + احراز هویت JWT",
     version="1.0.0"
     )
@@ -38,7 +37,8 @@ def sync_fetch():
     results = []
 
     for url in URLS:
-        response = requests.get(url)
+        response = requests.get(url, timeout=5.0)
+        response.raise_for_status()
         results.append(response.json())
 
     duration = time.perf_counter() - start_time
@@ -53,9 +53,12 @@ async def async_fetch():
     start_time = time.perf_counter()
     resulte = []
 
-    async with httpx.AsyncClient() as client:
+    timeout = httpx.Timeout(5.0)
+
+    async with httpx.AsyncClient(timeout=timeout) as client:
         for url in URLS:
             response = await client.get(url)
+            response.raise_for_status()
             resulte.append(response.json())
 
         duration = time.perf_counter() - start_time
@@ -70,11 +73,16 @@ async def async_fetch():
 async def async_concurrent():
     start_time = time.perf_counter()
 
-    async with httpx.AsyncClient() as client:
-        tasks = [client.get(url) for url in URLS]
-        response = await asyncio.gather(*tasks)
+    timeout = httpx.Timeout(5.0)
 
-        resulte = [resp.json() for resp in response]
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        tasks = [client.get(url) for url in URLS]
+        responses = await asyncio.gather(*tasks)
+
+        for response in responses :
+            response.raise_for_status()
+
+        resulte = [response.json() for response in responses]
 
         duration = time.perf_counter() - start_time
 
