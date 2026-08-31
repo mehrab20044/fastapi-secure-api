@@ -135,8 +135,40 @@ fake_users_db = {
         "full_name": "Mehrab Backend Dev",
         "email": "mehrab.5511.m3709@gmail.com",
         "hashed_password": get_password_hash("ai_mentor_2026"),
-    }
+        "role": "user",
+    },
+    "admin":{
+        "username": "admin",
+        "full_name": "Mehrab Backend Dev",
+        "email": "admin.5511.m3709@gmail.com",
+        "hashed_password": get_password_hash("admin_2026"),
+        "role": "admin",
+        },
 }
+
+
+async def require_admin(
+    current_username: str = Depends(get_current_user),      
+):
+    user = fake_users_db.get(current_username)
+
+    if not user or user ["role"] != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail= "Admin access required"
+        )
+    return user
+
+@app.get("/admin")
+async def admin_panel(
+    current_user: dict = Depends(require_admin),
+):
+    return{
+        "message": "welcom admin",
+        "username": current_user["username"],
+        "role": current_user["role"]
+    }
+
 
 class Token(BaseModel):
     access_token: str
