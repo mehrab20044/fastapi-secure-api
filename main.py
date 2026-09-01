@@ -4,9 +4,13 @@ from datetime import timedelta
 
 import httpx
 import requests
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 # وارد کردن ابزارهای امنیتی از auth.py
 from auth import (
@@ -16,11 +20,28 @@ from auth import (
     get_password_hash,
     verify_password,
 )
+from database import get_db
 
 app = FastAPI(
     title = "P1-W03: Async vs Sync I/O",
     description="پروژه یادگیری فاز ۱: تست همزمانی Async/Sync + احراز هویت JWT",
     version="1.0.0"
+    )
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(
+    _request: Request,
+    exc: StarletteHTTPException
+):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error":{
+            "status_code": exc.status_code,
+            "message": exc.detail,
+        },
+    },
+    headers=exc.headers,
     )
 
 URLS = [
@@ -190,12 +211,18 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
+
 @app.get("/users/me")
-async def read_users_me(current_username: str = Depends(get_current_user)):
+async def read_users_me(
+    current_username: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    db.execute(text("SELECT 1"))
+
     user = fake_users_db.get(current_username)
+
     return {
         "username": user["username"],
         "full_name": user["full_name"],
         "email": user["email"],
     }
-    
